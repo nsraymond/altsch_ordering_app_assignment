@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+      crossorigin="anonymous"
+    />
+    <title>Ordering App</title>
+    <style>
+      body {
+        background-color: #f8f9fa;
+        font-family: Arial, sans-serif;
+      }
+      .container {
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+        color: #333;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      .notification-container {
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 15px;
+        overflow-y: auto;
+        max-height: 300px;
+      }
+      .notification {
+        margin-bottom: 15px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+      }
+      .notification h4 {
+        margin-top: 0;
+        margin-bottom: 10px;
+      }
+      .notification p {
+        margin: 0;
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Ordering App</h1>
+
+      <div class="form-group">
+        <form id="signUpForm">
+          <div class="mb-3">
+            <label for="name"><strong>Username:</strong></label>
+            <input
+              id="name"
+              type="text"
+              name="name"
+              class="form-control"
+              placeholder="Enter your name..."
+            />
+          </div>
+          <button id="submitBtn" type="submit" class="btn btn-success">
+            Register
+          </button>
+        </form>
+      </div>
+
+      <div class="form-group">
+        <form id="request-form">
+          <div class="mb-3">
+            <label for="location">Location</label>
+            <input
+              required
+              type="text"
+              id="location"
+              value="Lekki"
+              class="form-control"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="destination">Destination</label>
+            <input
+              required
+              type="text"
+              id="destination"
+              value="Chevron"
+              class="form-control"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="price">Price</label>
+            <input
+              required
+              type="number"
+              id="price"
+              value="4500"
+              class="form-control"
+            />
+          </div>
+          <button type="submit" class="btn btn-primary">Request</button>
+        </form>
+      </div>
+
+      <div class="notification-container" id="notification-container">
+        <!-- Notifications will appear here -->
+      </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+      const socket = io("http://localhost:3600");
+
+      const signUpForm = document.getElementById("signUpForm");
+      const Username = document.getElementById("name");
+      const requestForm = document.getElementById("request-form");
+      const notificationContainer = document.getElementById(
+        "notification-container"
+      );
+
+      signUpForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        socket.emit("join", "sender", `Sender ${Username.value}`);
+      });
+
+      socket.on("senderCreated", (data) => {
+        localStorage.setItem(`sender-${socket.id}`, data.sender.id);
+        console.log("SenderId saved");
+      });
+
+      requestForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const current_location = document.getElementById("location").value;
+        const destination = document.getElementById("destination").value;
+        const price = document.getElementById("price").value;
+        const senderId = localStorage.getItem(`sender-${socket.id}`);
+
+        socket.emit("requestOrder", {
+          current_location,
+          destination,
+          price,
+          senderId,
+        });
+      });
+
+      socket.on("orderAccepted", (data) => {
+        const notification = document.createElement("div");
+        notification.classList.add("notification");
+        notification.innerHTML = `
+                <h4>Order Accepted</h4>
+                <p>${data.order.driver.name} has accepted your ride</p>
+                <p>Status: ${data.order.status}</p>
+                <p>Location: ${data.order.current_location}</p>
+                <p>Destination: ${data.order.destination}</p>
+                <p>Price: N${data.order.price}</p>`;
+        notificationContainer.appendChild(notification);
+      });
+
+      socket.on("orderExpired", (data) => {
+        const notification = document.createElement("div");
+        notification.classList.add("notification");
+        notification.innerHTML = `
+                <h4>No Driver Found</h4>
+                <p>No driver was available for your order request</p>
+                <p>Status: ${data.order.status}</p>
+                <p>Location: ${data.order.current_location}</p>
+                <p>Destination: ${data.order.destination}</p>
+                <p>Price: N${data.order.price}</p>`;
+        notificationContainer.appendChild(notification);
+      });
+
+      socket.on("rideFinished", (data) => {
+        const notification = document.createElement("div");
+        notification.classList.add("notification");
+        notification.innerHTML = `
+                <h4>Ride Finished</h4>
+                <p>Your ride with ${data.order.driver.name} has finished</p>
+                <p>Started from: ${data.order.current_location}</p>
+                <p>Ended in: ${data.order.destination}</p>
+                <p>Cost of ride: N${data.order.price}</p>`;
+        notificationContainer.appendChild(notification);
+      });
+    </script>
+  </body>
+</html>
