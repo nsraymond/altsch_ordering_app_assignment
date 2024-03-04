@@ -52,7 +52,7 @@ io.on("connection", (socket) => {
   });
 });
 
-const PORT = 3600;
+const PORT = 5001;
 server.listen(PORT, () => {
-  console.log('server is running on port: 3600');
+  console.log(`server is running on port: ${PORT}`);
 });
